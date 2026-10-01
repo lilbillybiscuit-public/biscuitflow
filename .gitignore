@@ -1,0 +1,9 @@
+.build/
+build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+.DS_Store
+# Third-party material kept locally for reference only
+reference/
+Models/
+*.log

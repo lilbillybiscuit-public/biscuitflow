@@ -1,0 +1,93 @@
+name: BiscuitFlow
+options:
+  bundleIdPrefix: dev.billyqian
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    # Ad-hoc signed by default: no certificate or Apple account needed.
+    # scripts/build.sh can sign with a real identity instead (see README).
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: YES
+packages:
+  speech-swift:
+    url: https://github.com/soniqo/speech-swift
+    exactVersion: 0.0.28
+targets:
+  BiscuitFlow:
+    type: application
+    platform: macOS
+    sources:
+      - path: BiscuitFlow
+    dependencies:
+      - package: speech-swift
+        product: Qwen3ASR
+      - sdk: Carbon.framework
+    info:
+      path: BiscuitFlow/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: BiscuitFlow
+        CFBundleName: BiscuitFlow
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: "15.0"
+        LSUIElement: false
+        NSMicrophoneUsageDescription: BiscuitFlow listens to your microphone while you hold the dictation key so it can transcribe your speech on-device.
+        NSAppleEventsUsageDescription: BiscuitFlow uses accessibility to paste dictated text into the focused app.
+    postBuildScripts:
+      - name: Bundle speech model
+        basedOnDependencyAnalysis: false
+        shell: /bin/bash
+        script: |
+          set -e
+          SRC="$PROJECT_DIR/Models/Qwen3-ASR-0.6B-MLX-5bit"
+          if [ ! -s "$SRC/model.safetensors" ]; then
+            echo "error: speech model missing — run scripts/fetch_model.sh"
+            exit 1
+          fi
+          DEST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Models"
+          mkdir -p "$DEST"
+          rsync -a --delete "$SRC" "$DEST/"
+    entitlements:
+      path: BiscuitFlow/Resources/BiscuitFlow.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.device.audio-input: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.billyqian.hflow
+        PRODUCT_NAME: BiscuitFlow
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+  BiscuitFlowTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: BiscuitFlowTests
+    dependencies:
+      - target: BiscuitFlow
+    settings:
+      base:
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/BiscuitFlow.app/Contents/MacOS/BiscuitFlow
+        BUNDLE_LOADER: $(TEST_HOST)
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  BiscuitFlow:
+    build:
+      targets:
+        BiscuitFlow: all
+        BiscuitFlowTests: [test]
+    test:
+      targets:
+        - BiscuitFlowTests
