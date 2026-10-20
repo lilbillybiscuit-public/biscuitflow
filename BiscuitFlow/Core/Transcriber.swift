@@ -1,4 +1,5 @@
 import Foundation
+import MLX
 import Qwen3ASR
 
 /// On-device speech recognition with Qwen3-ASR 0.6B (MLX, 5-bit) via soniqo/speech-swift.
@@ -29,6 +30,12 @@ actor Transcriber {
 
     private var model: Qwen3ASRModel?
 
+    /// MLX keeps freed GPU buffers for reuse, uncapped by default. Decoding allocates
+    /// slightly larger buffers every token, so the cache grows with transcript length
+    /// (~8.5 GB for a 1-minute clip) and never shrinks. Cap it, and empty it after
+    /// every transcription so idle memory returns to the model's own size.
+    static let mlxCacheLimitBytes = 256 * 1024 * 1024
+
     /// Reports load progress.
     private let onState: @Sendable (State) -> Void
 
@@ -52,6 +59,8 @@ actor Transcriber {
             // One short silent pass compiles the Metal kernels so the first real
             // dictation is fast.
             _ = model.transcribe(audio: [Float](repeating: 0, count: 16_000), sampleRate: 16_000, language: "English", maxTokens: 4)
+            MLX.Memory.cacheLimit = Self.mlxCacheLimitBytes
+            MLX.Memory.clearCache()
             self.model = model
             onState(.ready)
         } catch {
@@ -75,6 +84,7 @@ actor Transcriber {
         let raw = model.transcribe(
             audio: samples, sampleRate: 16_000, language: language,
             maxTokens: maxTokens, context: context)
+        MLX.Memory.clearCache()
         return Result(
             text: Self.clean(raw),
             audioSeconds: audioSeconds,

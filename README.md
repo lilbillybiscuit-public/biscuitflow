@@ -80,8 +80,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test -projec
   -destination 'platform=macOS,arch=arm64' -clonedSourcePackagesDirPath .build/spm -derivedDataPath .build/DerivedData \
   ARCHS=arm64 ONLY_ACTIVE_ARCH=YES
 
-# Headless ASR benchmark (works over SSH / in a VM without a GUI session)
-build/BiscuitFlow.app/Contents/MacOS/BiscuitFlow --bench tests/audio/sample1.wav --runs 3 [--language English]
+# Headless ASR benchmark (works over SSH / in a VM without a GUI session). Several files are
+# transcribed round-robin; each run prints timing plus process footprint and MLX active/cache/peak memory.
+build/BiscuitFlow.app/Contents/MacOS/BiscuitFlow --bench tests/audio/sample1.wav [more.wav …] --runs 3 [--language English]
 
 # Replace the microphone with a file to exercise the whole hotkey → paste path
 open -a build/BiscuitFlow.app --env HFLOW_TEST_AUDIO=$PWD/tests/audio/sample1.wav
